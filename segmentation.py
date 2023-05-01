@@ -50,23 +50,26 @@ class segmentation_task:
         df.columns = df.columns.astype(str)
         testdata = bnpy.data.XData.from_dataframe(df[: self.n_samples*self.patch_nwidth*self.patch_nheight])
         
-        K = 16          # n clusters
+        K = 3          # n clusters
         gamma = 10  # DP concentration param
-        sF = 0.1       # scale of expected covariance
+        sF = 25       # scale of expected covariance
                        ## Try emperical covariance
 
         full_trained_model, full_info_dict = bnpy.run(
             testdata, 
-            'DPMixtureModel', 'ZeroMeanGauss', 'memoVB',
+            'DPMixtureModel', 
+            'ZeroMeanGauss',
+            #'Gauss'
+            'memoVB',
             #output_path='/tmp/faithful/demo_sparse_resp-K=3-lik=Gauss-ECovMat=5*eye/',
-            output_path = '/Users/inii/CS_141/Final Project/segmentation_test/test_result',
-            nLap=350, nTask=1, 
+            #output_path = '/Users/inii/CS_141/Final Project/segmentation_test/test_result',
+            nLap=500, nTask=1, 
             nBatch=1, 
-            #convergeThr=0.001,
+            convergeThr=0.001,
             gamma0=gamma, 
             sF=sF, ECovMat='eye',
             K=K,
-            moves='merge,shuffle',
+            #moves='merge,shuffle',
             #nnzPerRowLP = 2,
             #initname='test',
      
@@ -75,8 +78,11 @@ class segmentation_task:
         LP_trained = full_trained_model.calc_local_params(testdata)
         testls = LP_trained['resp']
         
-        frequency_df = self.patches_labels_by_frequency(testls)
+        self.frequency_df = self.patches_labels_by_frequency(testls)
         self.patches_labels_on_img(testls)
+
+        #print(frequency_df.tail(1).max(axis = 1))
+        
         
         
     def img_to_dataset(self, imgset):
@@ -109,39 +115,59 @@ class segmentation_task:
     
         n = int(len(resp)/self.patch_nwidth/self.patch_nheight)
         ## Draw random sampples to present
-        np.random.seed(12345)
-        S = np.random.choice(10, size = (2, 3), replace = False)
+        #np.random.seed(12345)
+        #S = np.random.choice(10, size = (2, 3), replace = False)
+        s =  self.n_samples - 1
     
         x, y = self.generate_pixel_coordinates()
         labels = resp.argmax(axis = 1)
     
-        fig, axs = plt.subplots(4, 3, figsize = (10,10))
+        fig, axs = plt.subplots(1, 2, figsize = (10,10))
         #plt.subplots_adjust(hspace=0)
         fig.tight_layout()
     
     
-        for i in range(2):
-            for j in range(3):
-                s = S[i, j]
-                start = s*self.patch_nwidth*self.patch_nheight
-                end = start + self.patch_nwidth*self.patch_nheight
-                label_s = labels[start:end]
-                pltdf = pd.DataFrame(dict(x=x, y=y, label=label_s))
-                groups = pltdf.groupby('label')
-                # Plot
-                img = self.train_set[s]
-                #fig, ax = plt.subplots()
-                axs[i*2, j].margins(0.02)
-                axs[i*2, j].imshow(img, extent=[0, self.width, 0, self.height])
-                #axs[].subplots_adjust(hspace=0)
-                axs[i*2, j].axis('off')
-                for name, group in groups:
-                    axs[i*2, j].plot(group.x, group.y, marker='s', linestyle='',alpha = 0.07, ms=self.patch_size, label=name)
+        #for i in range(2):
+        #    for j in range(3):
+        #        s = S[i, j]
+        #        start = s*self.patch_nwidth*self.patch_nheight
+        #        end = start + self.patch_nwidth*self.patch_nheight
+        #        label_s = labels[start:end]
+        #        pltdf = pd.DataFrame(dict(x=x, y=y, label=label_s))
+        #        groups = pltdf.groupby('label')
+        #        # Plot
+        #        img = self.train_set[s]
+        #        #fig, ax = plt.subplots()
+        #        axs[i*2, j].margins(0.02)
+        #        axs[i*2, j].imshow(img, extent=[0, self.width, 0, self.height])
+        #        #axs[].subplots_adjust(hspace=0)
+        #        axs[i*2, j].axis('off')
+        #        for name, group in groups:
+        #            axs[i*2, j].plot(group.x, group.y, marker='s', linestyle='',alpha = 0.07, ms=self.patch_size, label=name)
             
-                axs[i*2+1, j].margins(0.02)
-                axs[i*2+1, j].imshow(img, extent=[0, self.width, 0, self.height])
-                axs[i*2+1, j].axis('off')
-            axs[i*2, j].legend()
+        #        axs[i*2+1, j].margins(0.02)
+        #        axs[i*2+1, j].imshow(img, extent=[0, self.width, 0, self.height])
+        #        axs[i*2+1, j].axis('off')
+        #    axs[i*2, j].legend()
+        
+        start = s*self.patch_nwidth*self.patch_nheight
+        end = start + self.patch_nwidth*self.patch_nheight
+        label_s = labels[start:end]
+        pltdf = pd.DataFrame(dict(x=x, y=y, label=label_s))
+        groups = pltdf.groupby('label')
+        
+        #fig, ax = plt.subplots()
+        
+        img = self.train_set[s]
+        axs[0].margins(0.02)
+        axs[0].imshow(img, extent=[0, self.width, 0, self.height])
+        axs[0].axis('off')
+        for name, group in groups:
+            axs[0].plot(group.x, group.y, marker='s', linestyle='',alpha = 0.2, ms=self.patch_size, label=name)
+        
+        axs[1].margins(0.02)
+        axs[1].imshow(img, extent=[0, self.width, 0, self.height])
+        axs[1].axis('off')
     
         plt.show()
     
@@ -154,6 +180,7 @@ class segmentation_task:
         #        axs1[i, j].imshow(img, extent=[0, 256, 0, 256]) 
         #        axs1[i, j].axis('off')
         #plt.show()
+        
         
     def patches_labels_by_frequency(self, resp):
     
@@ -172,3 +199,7 @@ class segmentation_task:
             df.iloc[n] = frequency
         
         return df
+    
+    def latest_percentage(self):
+        
+        return self.frequency_df.tail(1).max(axis = 1).to_numpy()[0]
