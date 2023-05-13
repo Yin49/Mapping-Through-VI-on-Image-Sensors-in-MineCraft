@@ -18,3 +18,7 @@ To use the Q-learning algorithm to train the agent, the user needs to create a f
 
 
 Inside the main.py file, there are several global variables that can be modified to alter the behavior of the Q-learning algorithm and the Minecraft agent. These variables include the exploration rate, learning rate, discount factor, number of episodes to train for and etc. Comments are comprehensive inside the codes.
+
+The following packages were installed for the project: mcpi, pynput, and other primary packages were installed using pip
+pip install mcpi
+pip install pynput
